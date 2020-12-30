@@ -157,6 +157,17 @@ button:focus {
   border-left: none;
 }
 
+.album .arrow__disabled {
+  opacity: 0.3;
+}
+.album .arrow__disabled:hover {
+  background-color: transparent;
+  cursor: default;
+}
+.album .arrow__disabled:hover:before {
+  border-color: #e1e3e2;
+}
+
 /* modal */
 .modal-wrapper {
   position: fixed;
@@ -229,10 +240,30 @@ button:focus {
   padding-top: 35px;
 }
 
+.arrow_none {
+  display: none;
+}
+
+@media screen and (max-width: 850px) {
+  .album__photo {
+    width: 49%;
+    margin-right: 2%;
+  }
+
+  .album__photo:nth-child(2n) {
+    margin-right: 0;
+  }
+
+  .album__photo:nth-child(3n) {
+    margin-right: auto;
+  }
+}
+
 
 @media screen and (max-width: 500px) {
   .album__item {
-    max-width: 300px !important;
+    max-width: 300px;
+    margin: 0 auto;
     padding: 0 40px;
   }
 
