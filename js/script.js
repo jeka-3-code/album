@@ -1,118 +1,77 @@
 class Album {
-  constructor() {
-    this.id = 0;
-
-    this.prevArrow = document.querySelector('.btn__prev_js');
+  constructor(selector) {
+    this.element = document.querySelector(selector);
+    this.id = 1;
+    this.maxAlbum = 100;
     this.nextArrow = document.querySelector('.btn__next_js');
-
-    this.albumTrack = document.querySelector('.album__track-js');
-    this.photo = document.querySelector('.album__photo');
-
+    this.prevArrow = document.querySelector('.btn__prev_js');
     this.modals = document.querySelectorAll('.modal-wrapper');
+    this.modalsSelector = document.querySelector('.albumBigPhoto_js');
+    this.modalContent = document.querySelector('.modal-dialog');
 
-    this.summ = document.querySelector('.summ');
-
-    this.elements = [];
-
-    this.appendNewDiv = parent => parent.appendChild(document.createElement('div'));
-
-    const wrap = this.appendNewDiv(this.albumTrack);
-    const title = this.appendNewDiv(wrap);
-    const itemAlbumWrap = this.appendNewDiv(wrap);
-
-    wrap.classList.add('album__item');
-    title.classList.add('album_title');
-    itemAlbumWrap.classList.add('album__item__wrap');
-
-    this.itemAlbumWrap = itemAlbumWrap;
-    this.title = title;
-  }
-  
-  // album photo
-  async photosResponse() {
-    const responseAlbumPhotos = await fetch('https://jsonplaceholder.typicode.com/photos');
-    this.albumPhotos = await responseAlbumPhotos.json();
-
-    let tmp = this.albumPhotos.reduce((sum, curr) => {
-      let tmp = sum[curr.albumId];
-      if (tmp == undefined) {
-        sum[curr.albumId] = tmp = {};
-        tmp.albumId = curr.albumId;
-        tmp.albums = [];
-      };
-      tmp.albums.push({
-        albumId: curr.albumId,
-        id: curr.id,
-        thumbnailUrl: curr.thumbnailUrl,
-        url: curr.url
-      });
-      return sum;
-    }, {});
-
-    const arr2 = Object.keys(tmp).map(key => tmp[key]);
-
-    return arr2;
+    this.initSlider();
   }
 
-  // album title
-  async albumResponse() {
-    let responseAlbumTitle = await fetch('http://jsonplaceholder.typicode.com/albums');
-    let albumTitle = await responseAlbumTitle.json();
-
-    return albumTitle;
+  getTemplate(photo, titles) {
+    const photos = photo.map(item => {
+      return `
+        <div class="album__photo">
+          <div class="album__photo_wrap" data-type="photo" data-id="${item.id}"></div>
+          <img src="${item.thumbnailUrl}" alt="${item.id}">
+        </div>    
+      `
+    })
+    const title = titles.map(item => {
+      return `
+        <div class="album_title">${item.title}</div>    
+      `
+    })
+    return `
+      <div class="album__item">
+        ${title.join('')}
+        <div class="album__item__wrap">
+          ${photos.join('')}
+        </div>
+      </div>
+    `
   }
 
-  renderByNumber(number) {
-    this.photosResponse().then((value) => {
-      const { albumId, albums } = value[number];
-      this.elements.forEach(e => this.itemAlbumWrap.removeChild(e));
+  async render(id) {
+    const responsePhoto = await fetch(`http://jsonplaceholder.typicode.com/photos?albumId=${id}`);
+    if (responsePhoto.ok == false) {
+      console.log('error fetch photo');
+    }    
+    const photo = await responsePhoto.json();
 
-      this.albumResponse().then((album) => {
-        const titleBlock = this.title;
+    const responseTitle = await fetch(`http://jsonplaceholder.typicode.com/albums?id=${id}`);
+    if (responseTitle.ok == false) {
+      console.log('error fetch title');
+    } 
+    const title = await responseTitle.json();
 
-        album.forEach(function (item) {
-          if (item.id == albumId) {
-            titleBlock.textContent = item.title;
+    this.element.innerHTML = this.getTemplate(photo, title);
+
+    this.postPhoto = this.element.querySelectorAll('[data-type="photo"]');
+
+    this.modal(this.postPhoto, photo);    
+  }
+
+  modal(items, photo) {
+    this.modalClose();
+    items.forEach(element => {
+      element.addEventListener('click', (event) => {
+        const id = event.target.dataset.id;
+        photo.forEach(item => {
+          if(item.id == id) {
+            this.modalsSelector.classList.add('modal__active');
+            document.body.classList.add('body__hide');
+            this.modalContent.innerHTML = `
+              <img src="${item.url}" alt="${item.id}">
+            `;
           }
         })
       })
-
-      this.elements = albums.map(album => {
-        const albumPhoto = this.appendNewDiv(this.itemAlbumWrap);
-        albumPhoto.classList.add('album__photo')
-
-        albumPhoto.innerHTML = `
-          <div class="album__photo_wrap" id="${album.id}"></div>
-          <img src="${album.thumbnailUrl}" alt="${album.id}">  
-        `;
-
-        return albumPhoto;
-      });
     });
-  };
-
-  photosModal() {
-    const albumPhoto = this.photosResponse();
-
-    this.albumTrack.addEventListener('click', function (e) {
-      if (e.target.classList.contains("album__photo_wrap")) {
-        {
-          albumPhoto.then((value) => {
-            value.forEach((album) => {
-              album.albums.forEach((item) => {
-                if (e.target.id == item.id) {
-                  document.querySelector('.albumBigPhoto_js').classList.add('modal__active');
-                  document.body.classList.add('body__hide');
-                  document.querySelector('.modal-dialog').innerHTML = `
-                    <img src="${item.url}" alt="${item.id}">
-                  `;
-                };
-              })
-            })
-          })
-        }
-      }
-    })
   }
 
   modalClose() {
@@ -122,7 +81,6 @@ class Album {
         document.body.classList.remove('body__hide');
       }
     })
-
     document.querySelectorAll('.modal-close-js').forEach(function (close) {
       close.addEventListener('click', () => {
         closet();
@@ -131,61 +89,51 @@ class Album {
   }
 
   slider() {
-    this.renderByNumber(this.id);
-
-    this.photosModal();
-
-    this.modalClose();
+    this.render(this.id);
   }
 
-  nextNumm() {
+  nextSlide() {
     return this.id += 1;
   }
 
-  prevNumm() {
+  prevSlide() {
     return this.id -= 1;
   }
 
-  prevNone() {
-    if (this.id === 0) {
+  arrowNextHide() {
+    if (this.id === this.maxAlbum) {
+      this.nextArrow.classList.add('arrow_none');
+    } else {
+      this.nextArrow.classList.remove('arrow_none');
+    }
+  }
+
+  arrowPrevHide() {
+    if (this.id === 1) {
       this.prevArrow.classList.add('arrow_none');
     } else {
       this.prevArrow.classList.remove('arrow_none');
     }
   }
 
-  nextNone() {
-    this.photosResponse().then((album) => {
-      const summ = album.length - 1;
-
-      if (this.id === summ) {
-        this.nextArrow.classList.add('arrow_none');
-      } else {
-        this.nextArrow.classList.remove('arrow_none');
-      }
-    })
-  }
-
   initSlider() {
     this.slider();
-    this.prevNone();
+    this.arrowPrevHide();
 
     this.nextArrow.addEventListener('click', () => {
-      this.nextNumm();
+      this.nextSlide();
       this.slider();
-      this.prevNone();
-      this.nextNone();
+      this.arrowPrevHide();
+      this.arrowNextHide();
     });
 
     this.prevArrow.addEventListener('click', () => {
-      this.prevNumm();
+      this.prevSlide();
       this.slider();
-      this.prevNone();
-      this.nextNone()
+      this.arrowPrevHide();
+      this.arrowNextHide();
     });
-
   }
 }
 
-const album = new Album();
-album.initSlider();
+new Album(".album__track-js")
