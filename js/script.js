@@ -1,10 +1,8 @@
 class Album {
   constructor(selector) {
-    this.element = document.querySelector(selector);
+    this.elements = document.querySelectorAll(selector);
     this.id = 1;
     this.maxAlbum = 100;
-    this.nextArrow = document.querySelector('.btn__next_js');
-    this.prevArrow = document.querySelector('.btn__prev_js');
     this.modals = document.querySelectorAll('.modal-wrapper');
     this.modalsSelector = document.querySelector('.albumBigPhoto_js');
     this.modalContent = document.querySelector('.modal-dialog');
@@ -32,28 +30,37 @@ class Album {
         <div class="album__item__wrap">
           ${photos.join('')}
         </div>
-      </div>
+      </div>      
     `
   }
 
-  async render(id) {
-    const responsePhoto = await fetch(`http://jsonplaceholder.typicode.com/photos?albumId=${id}`);
-    if (responsePhoto.ok == false) {
-      console.log('error fetch photo');
-    }    
-    const photo = await responsePhoto.json();
+  async render(id, element) {
+    const photoLink = `http://jsonplaceholder.typicode.com/photos?albumId=${id}`;
+    const titleLink = `http://jsonplaceholder.typicode.com/albums?id=${id}`;
 
-    const responseTitle = await fetch(`http://jsonplaceholder.typicode.com/albums?id=${id}`);
-    if (responseTitle.ok == false) {
-      console.log('error fetch title');
-    } 
-    const title = await responseTitle.json();
+    Promise
+      .all([photoLink, titleLink].map(url => fetch(url).then(response => {
+        if (response.status !== 200) {
+          return Promise.reject(new Error(response.statusText))
+        }
+        return Promise.resolve(response)
+      })))
+      .then(data => data.map(v => v.json()))
+      .then(data => Promise.all(data))
+      .then(data => renderArray(...data))
+      .catch(err => console.error(err));
 
-    this.element.innerHTML = this.getTemplate(photo, title);
+    this.albumTrack = element.querySelector('.album__track_js');
+    this.postPhoto = element.querySelectorAll('[data-type="photo"]');
+    const trackAlbum = this.albumTrack;
 
-    this.postPhoto = this.element.querySelectorAll('[data-type="photo"]');
+    const renderArray = (responsePhoto, responseTitle) => {
+      trackAlbum.innerHTML = this.getTemplate(responsePhoto, responseTitle);
 
-    this.modal(this.postPhoto, photo);    
+      this.postPhoto = trackAlbum.querySelectorAll('[data-type="photo"]');
+
+      this.modal(this.postPhoto, responsePhoto);
+    }
   }
 
   modal(items, photo) {
@@ -62,7 +69,7 @@ class Album {
       element.addEventListener('click', (event) => {
         const id = event.target.dataset.id;
         photo.forEach(item => {
-          if(item.id == id) {
+          if (item.id == id) {
             this.modalsSelector.classList.add('modal__active');
             document.body.classList.add('body__hide');
             this.modalContent.innerHTML = `
@@ -88,52 +95,51 @@ class Album {
     });
   }
 
-  slider() {
-    this.render(this.id);
-  }
-
-  nextSlide() {
-    return this.id += 1;
-  }
-
-  prevSlide() {
-    return this.id -= 1;
-  }
-
-  arrowNextHide() {
-    if (this.id === this.maxAlbum) {
-      this.nextArrow.classList.add('arrow_none');
+  arrowNextHide(element) {
+    if (this.slide === this.maxAlbum) {
+      element.querySelector('.btn__next_js').classList.add('arrow_none');
     } else {
-      this.nextArrow.classList.remove('arrow_none');
+      element.querySelector('.btn__next_js').classList.remove('arrow_none');
     }
   }
 
-  arrowPrevHide() {
-    if (this.id === 1) {
-      this.prevArrow.classList.add('arrow_none');
+  arrowPrevHide(element) {
+    if (this.slide === 1) {
+      element.querySelector('.btn__prev_js').classList.add('arrow_none');
     } else {
-      this.prevArrow.classList.remove('arrow_none');
+      element.querySelector('.btn__prev_js').classList.remove('arrow_none');
     }
   }
 
   initSlider() {
-    this.slider();
-    this.arrowPrevHide();
+    this.elements.forEach((element) => {
+      this.slide = this.id;
+      this.nextArrow = element.querySelector('.btn__next_js');
+      this.prevArrow = element.querySelector('.btn__prev_js');
+      this.render(this.id, element);
+      this.arrowPrevHide(element);
+      this.arrowNextHide(element);
 
-    this.nextArrow.addEventListener('click', () => {
-      this.nextSlide();
-      this.slider();
-      this.arrowPrevHide();
-      this.arrowNextHide();
-    });
+      this.nextArrow.addEventListener('click', () => {
+        if (this.slide === this.maxAlbum) {
+          this.slide = this.maxAlbum;
+        } else {
+          this.slide += 1;
+        }
+        this.render(this.slide, element);
+        this.arrowPrevHide(element);
+        this.arrowNextHide(element);
+      })
 
-    this.prevArrow.addEventListener('click', () => {
-      this.prevSlide();
-      this.slider();
-      this.arrowPrevHide();
-      this.arrowNextHide();
-    });
+      this.prevArrow.addEventListener('click', () => {
+        this.slide -= 1;
+        this.render(this.slide, element);
+        this.arrowPrevHide(element);
+        this.arrowNextHide(element);
+      })
+
+    })
   }
 }
 
-new Album(".album__track-js")
+new Album(".album_js")
